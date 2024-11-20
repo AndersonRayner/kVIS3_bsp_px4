@@ -24,6 +24,7 @@ if ~nargin
     file = 'log_28_2021-4-2-16-38-26.ulg';  % Small (0.5 MB)
 %     file = 'log_13_2019-9-14-02-08-36.ulg'; % Medium (7 MB)
 %     file = 'log_0_2019-9-13-16-25-54.ulg';  % Large (25 MB)
+    file = 'C:\Users\matt\Downloads\arroyo_crash_20241108.ulg';
 
 end
 
@@ -250,60 +251,75 @@ end
     
 %% Add events based on flight mode changes
 % We can use MODE.ModeNum to work this out
-modeTimes   = kVIS_fdsGetChannel(fds, 'manual_control_setpoint_0','Time');
-modeNumbers = kVIS_fdsGetChannel(fds, 'manual_control_setpoint_0','mode_slot');
-% modeReasons = kVIS_fdsGetChannel(fds, 'manual_control_setpoint_0','data_source');
+mode_switch_channels = ['manual_control_setpoint_0';'manual_control_switches_0'];
+mode_switch_found = 0;
+for ii = 1:length(mode_switch_channels)
+    mode_switch_channel = mode_switch_channels(ii,:);
+    modeTimes   = kVIS_fdsGetChannel(fds, mode_switch_channel,'Time');
+    modeNumbers = kVIS_fdsGetChannel(fds, mode_switch_channel,'mode_slot');
+    % modeReasons = kVIS_fdsGetChannel(fds, 'manual_control_setpoint_0','data_source');
 
-modeTimes(1) = 0; % Force the first mode time to 0
+    if (modeNumbers ~= -1)
+        mode_switch_found = 1;
+        break
+    end
+end
 
-% Combine short and same mode changes
-if numel(modeTimes > 0.5)
-    ii = 2;
-    while ii < numel(modeNumbers)
-        if modeNumbers(ii-1) == modeNumbers(ii)
-            % Remove entry as mode didn't change
-            modeNumbers(ii) = [];
-            modeTimes(ii)   = [];
-            % modeReasons(ii) = [];
-        else
-            ii = ii+1;
+if (mode_switch_found ~= 1)
+    % We probably didn't get modes here 
+    fprintf("Couldn't automatically extract mode changes\n");
+else 
+    modeTimes(1) = 0; % Force the first mode time to 0
+    
+    % Combine short and same mode changes
+    if numel(modeTimes > 0.5)
+        ii = 2;
+        while ii < numel(modeNumbers)
+            if modeNumbers(ii-1) == modeNumbers(ii)
+                % Remove entry as mode didn't change
+                modeNumbers(ii) = [];
+                modeTimes(ii)   = [];
+                % modeReasons(ii) = [];
+            else
+                ii = ii+1;
+            end
         end
     end
-end
-
-% Add a marker for the mode at log's end
-modeTimes(end+1) = t_end;
-modeNumbers(end+1) = modeNumbers(end);
-% modeReasons(end+1) = modeReasons(end);
-
-% Loop through modeTimes and store data
-eventNumber = 0;
-
-for ii = 1:numel(modeTimes)-1
-    % Get info
-    t_in  = modeTimes(ii);
-    t_out = modeTimes(ii+1);
     
-    % Check if change was valid
-    if t_out-t_in > 0.5
+    % Add a marker for the mode at log's end
+    modeTimes(end+1) = t_end;
+    modeNumbers(end+1) = modeNumbers(end);
+    % modeReasons(end+1) = modeReasons(end);
+    
+    % Loop through modeTimes and store data
+    eventNumber = 0;
+    
+    for ii = 1:numel(modeTimes)-1
+        % Get info
+        t_in  = modeTimes(ii);
+        t_out = modeTimes(ii+1);
         
-        modeReason = 'Mode Switch';
-        
-        modeType = modes_PX4_Copter(modeNumbers(ii));
-        
-        % Fill out eList
-        eventNumber = eventNumber+1;
-        eList(eventNumber).type = modeType;
-        eList(eventNumber).start= t_in;
-        eList(eventNumber).end  = t_out;
-        eList(eventNumber).description = modeReason;
-        eList(eventNumber).plotDef='';
+        % Check if change was valid
+        if t_out-t_in > 0.5
+            
+            modeReason = 'Mode Switch';
+            
+            modeType = modes_PX4_Copter(modeNumbers(ii));
+            
+            % Fill out eList
+            eventNumber = eventNumber+1;
+            eList(eventNumber).type = modeType;
+            eList(eventNumber).start= t_in;
+            eList(eventNumber).end  = t_out;
+            eList(eventNumber).description = modeReason;
+            eList(eventNumber).plotDef='';
+        end
+            
     end
-        
+    
+    % Add eList to eventList
+    fds.eventList = eList;
 end
-
-% Add eList to eventList
-fds.eventList = eList;
 
 %% Return the fds struct
 fprintf('File imported in %.2f seconds\n',toc);

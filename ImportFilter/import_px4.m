@@ -253,7 +253,7 @@ end
 % We can use MODE.ModeNum to work this out
 mode_switch_channels = ['manual_control_setpoint_0';'manual_control_switches_0'];
 mode_switch_found = 0;
-for ii = 1:length(mode_switch_channels)
+for ii = 1:size(mode_switch_channels,1)
     mode_switch_channel = mode_switch_channels(ii,:);
     modeTimes   = kVIS_fdsGetChannel(fds, mode_switch_channel,'Time');
     modeNumbers = kVIS_fdsGetChannel(fds, mode_switch_channel,'mode_slot');

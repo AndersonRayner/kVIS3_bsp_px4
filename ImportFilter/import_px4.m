@@ -24,8 +24,6 @@ if ~nargin
     file = 'log_28_2021-4-2-16-38-26.ulg';  % Small (0.5 MB)
 %     file = 'log_13_2019-9-14-02-08-36.ulg'; % Medium (7 MB)
 %     file = 'log_0_2019-9-13-16-25-54.ulg';  % Large (25 MB)
-    file = 'C:\Users\matt\Downloads\arroyo_crash_20241108.ulg';
-
 end
 
 tic
